@@ -4,6 +4,6 @@ library(shiny)
 ui <- fluidPage(
   titlePanel("Alberta Map"),
   mainPanel(
-    leafletOutput("alberta_map")
+    leafletOutput(outputId = "alberta_map")
   )
 )

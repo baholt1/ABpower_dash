@@ -1,5 +1,10 @@
 library(shiny)
 library(leaflet)
+library(readxl)
 
-r_colors <- rgb(t(col2rgb(colors()) /255))
-names(r_colors) <- colors()
+Master_Location <- read_excel("Master-Location.xlsx", 
+                              skip = 6)
+dplyr::right_join(Master_Location, generationBySource, by = "ASSET")
+
+
+merge(Master_Location, generationBySource)

@@ -12,13 +12,18 @@ server <- function(input, output) {
       dplyr::mutate(name = stringr::str_replace(name, 
                                                 pattern = " AB", 
                                                 replacement = ""))
+    locations <- merge(ab.city, 
+                       Master_Location, 
+                       by.x = "name", 
+                       by.y = "Area Name")
+
     
     map <- leaflet() %>%
       addTiles() %>%
-      addCircleMarkers(data = ab.city, 
+      addCircleMarkers(data = locations, 
                        lng = ~long, 
                        lat = ~lat, 
-                       popup = ~name,
+                       popup = ~locations$`Facility Name`,
                        radius = 5,
                        color = "red")
     
