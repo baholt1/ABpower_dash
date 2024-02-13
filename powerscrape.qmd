@@ -10,6 +10,30 @@ library(tidyverse)
 
 aesoDashSource <- read_html('http://ets.aeso.ca/ets_web/ip/Market/Reports/CSDReportServlet')
 
+#for tables without an applicable subtype (ie. gas does not work)
+AESOsimpleTable <- function(table, subtype) {
+  summary <- aesoDashSource %>% 
+  html_elements(css = "table") %>% 
+  .[table] %>% 
+  html_table() %>% 
+  .[[1]] 
+  
+  colNames <- c("ASSET", "MC", "TNG", "DCR")
+  
+  type <- colnames(summary)
+  colnames(summary) <- colNames
+  
+  summary <- summary %>% 
+    mutate(type = type[[1]]) %>% 
+    # no applicable subtype; placeholder
+    mutate(subtype = subtype) %>% 
+    # redudant first row
+    filter(!ASSET %in% c("ASSET", "GROUP"))
+    
+  return(summary)
+}
+
+GenerationBySource <- function(){
 # gas table
 gas <- aesoDashSource %>% 
   html_elements(css = "table") %>% 
@@ -41,30 +65,6 @@ gas <- gas %>%
 
 
 #for tables without an applicable subtype (ie. gas does not work)
-AESOsimpleTable <- function(table, subtype) {
-  summary <- aesoDashSource %>% 
-  html_elements(css = "table") %>% 
-  .[table] %>% 
-  html_table() %>% 
-  .[[1]] 
-  
-  colNames <- c("ASSET", "MC", "TNG", "DCR")
-  
-  type <- colnames(summary)
-  colnames(summary) <- colNames
-  
-  summary <- summary %>% 
-    mutate(type = type[[1]]) %>% 
-    # no applicable subtype; placeholder
-    mutate(subtype = subtype) %>% 
-    # redudant first row
-    filter(!ASSET %in% c("ASSET", "GROUP"))
-    
-  return(summary)
-}
-  
-  
-
 hydro <- AESOsimpleTable(13, "hydro")
 
 aesoDashSource %>% 
@@ -118,10 +118,12 @@ coal <- AESOsimpleTable(20, "coal")
 
 generationBySource <- rbind(gas, hydro, energyStor, solar, wind, bioAndOther, duel, coal)
 
+
+
 remove(gas, hydro, energyStor, solar, wind, bioAndOther, duel, coal)
+}
 
-
-
+Summary <- function(){
 summary <- aesoDashSource %>% 
   html_elements(css = "table") %>% 
   .[7] %>% 
@@ -134,7 +136,7 @@ colnames(summary) <- c("summary", "total", "drop")
 # dropping empty lg column
 summary <- summary %>% 
   select(-drop)
-  
+}
 
 aesoDashSource %>% 
   html_elements(css = "table") %>% 
@@ -142,17 +144,33 @@ aesoDashSource %>%
   html_table() %>% 
   .[[1]]
 
-
+TotalGeneration <- function(){
 totalGeneration <- AESOsimpleTable(8, "total") %>% 
   rename(GENERATION = ASSET)
+}
 
+Interchange <- function() {
 interchange <- aesoDashSource %>% 
   html_elements(css = "table") %>% 
   .[9] %>% 
   html_table() %>% 
   .[[1]]
-  
-  
-colnames(interchange) <- c("path", "interchangeFlow")
 
+
+colnames(interchange) <- c("path", "interchangeFlow")
+}
+
+scrape <- function() {
+  GenByS <- GenerationBySource()
+  Smry <- Summary()
+  Intchange <- Interchange()
+  TotalGen <- TotalGeneration()
+  
+  return(GenByS)
+  return(Smry)
+  return(Intchange)
+  return(TotalGen)
+}
+
+scrape()
 ```
