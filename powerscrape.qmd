@@ -155,4 +155,34 @@ interchange <- aesoDashSource %>%
   
 colnames(interchange) <- c("path", "interchangeFlow")
 
+
+
 ```
+
+```{r}
+library(tidyverse)
+
+mastLocation <- rio::import('https://www.aeso.ca/assets/Uploads/grid-related-initiatives/Loss-Factors/Master-Loss-Factor-Location-List-for-2023_2022-05-27-4Posting.xlsx') 
+
+
+colNames <- mastLocation %>% 
+  slice(6) %>%
+  unlist(use.names = FALSE)
+
+colnames(mastLocation) <- colNames
+
+mastLocation <- mastLocation %>% 
+  slice(-1:-6) %>%
+  separate_rows(`Source Asset`, sep = ",\\s*")
+
+mastLocation <- mastLocation %>% 
+  transmute(AssetID = `Source Asset`, Owner, AreaName = `Area Name`, Number)
+
+generationBySource <- generationBySource %>%
+  mutate(AssetID = str_extract(ASSET, "\\([A-Z0-9]{3,4}\\)")) %>%
+  mutate(AssetID = str_remove_all(AssetID, "[\\(\\)]"))
+
+left_join(generationBySource, mastLocation, by = 'AssetID')
+
+```
+
