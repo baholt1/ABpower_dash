@@ -24,7 +24,8 @@ server <- function(input, output) {
                        by.x = "name", 
                        by.y = "Area Name")
     
-    locations$jittered_lng <- jitter(locations$long)
+    locations$jittered_lng <- jitter(locations$long,
+                                     amount = 0.005)
     locations$jittered_lat <- jitter(locations$lat)
 
     
