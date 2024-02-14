@@ -15,9 +15,9 @@ shiny::fluidPage(
       choices = type,
       selectize = F),
     shiny::radioButtons("map_bound", "Choose the Boundaries:",
-                        choices = c("Region" = "REGION",
-                                    "Area" = "AREA_ID"),
-                        selected = "Area"
+                        choices = c("Area" = "AREA_ID",
+                                    "Region" = "REGION"
+                                    )
                         ),
     shiny::tableOutput(outputId = "ab_generation")
   )

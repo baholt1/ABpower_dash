@@ -3,13 +3,7 @@ library(readxl)
 library(maps)
 library(sf)
 
-path <- "C:/Users/holtb/OneDrive/Documents/UAlberta 2023-2024 Year 4/Winter 2024/FIN 488 FINTECH3/ABpower_dash/AESO-Planning-Areas-2020-06-23"
-
-boundaries <- sf::st_read(dsn = path)
-uniqueR <- unique(boundaries$REGION)
-uniqueN <- unique(boundaries$NAME)
-
-bound_cols <- rainbow(length(uniqueR))
+path <- "AESO-Planning-Areas-2020-06-23"
 
 
 bound_cols <- rainbow(nrow(boundaries))

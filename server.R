@@ -28,12 +28,12 @@ function(input, output, session) {
     leaflet::leaflet() %>%
     leaflet::addTiles() %>%
         leaflet::addPolygons(data = boundaries,
-                    fillColor = ~bound_cols,
+                    fillColor = bound_cols,
                     fillOpacity = 0.1,
                     color = "black",
                     stroke = T,
                     weight = 1,
-                    popup = boundaries$REGION) %>% 
+                    popup = boundaries$NAME) %>% 
         leaflet::addCircleMarkers(data = locations,
                          lng = ~jittered_lng,
                          lat = ~jittered_lat,
@@ -42,28 +42,17 @@ function(input, output, session) {
                          color = "red") 
   })
   
-  # shiny::observe({
-  #   req(input$map_bound)
-  #   leaflet::leafletProxy("alberta_map") %>%
-  #     clearShapes() %>% 
-  #   addPolygons(data = boundaries,
-  #               fillColor = bound_cols,
-  #               fillOpacity = 0.1,
-  #               color = "black",
-  #               stroke = T,
-  #               weight = 1,
-  #               options = list(AREASifelse(input$map_bound == "REGION", "AREA_ID"),
-  #               popup = ifelse(input$map_bound == "REGION", "AREA_ID"))
-  # })
   
-  # observe({
-  #   filtered_type <- generationBySource %>%
-  #     stringr::str_subset(pattern = input$source)
-  #   leaflet::leafletProxy("alberta_map") %>%
-  #     clearMarkers() %>%
-  #     addMarkers(data = filtered_type,
-  #                lng = ~)
-    
-  # })
+ #   observe({
+ #     filtered_type <- generationBySource %>%
+ #       stringr::str_subset(pattern = input$source)
+ #     
+ #     leaflet::leafletProxy("alberta_map") %>%
+ #       clearMarkers() %>%
+ #       addMarkers(data = filtered_type,
+ #                  lng = ~jittered)
+ # 
+ # })
+   
 }
 
