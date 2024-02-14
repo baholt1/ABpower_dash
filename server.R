@@ -7,52 +7,62 @@ library(leaflet)
 # Define server logic
 function(input, output, session) {
   
-  type <- shiny::observe({
-    shiny::updateSelectInput(session, "source", choices = unique(generationBySource$type))
+  # Reactive value to store the fetched data
+  reactiveGenerationBySource <- reactiveVal()
+  
+  # Function to fetch and update data
+  updateData <- function() {
+    # Assuming scrapeGen() fetches and processes your data
+    # Update this function call if it requires different handling
+    newData <- scrapeGen(read_html('http://ets.aeso.ca/ets_web/ip/Market/Reports/CSDReportServlet'))
+    reactiveGenerationBySource(newData)
+  }
+  
+  updateData()
+  
+  # Reactive expression for filtering
+  filteredData <- reactive({
+    req(reactiveGenerationBySource())  # Ensure data is available before proceeding
+    reactiveGenerationBySource() %>%
+      filter(type == input$typeInput) %>% 
+      select(-c(type, subtype, date))
   })
   
-  output$ab_generation <- shiny::renderTable({
-    AESOsimpleTable(8, "total") %>% 
-      dplyr::rename(GENERATION = ASSET) %>% 
-      dplyr::transmute(Generation = GENERATION,
-                    "Maximum Capacity" = MC,
-                    "Total Net Generation" = TNG,
-                    "Dispatched (and Accepted) Contingency Reserve" = DCR)
-    
-    
+  # Render the filtered table
+  output$filteredTable <- renderTable({
+    filteredData()
   })
   
-  # Function to create Alberta map
+  # Update the selectInput choices dynamically based on the updated data
+  observe({
+    updateSelectInput(session, "typeInput", choices = unique(reactiveGenerationBySource()$type))
+  })
+
+  
+
+  
+  # Render the filtered map
   output$alberta_map <- leaflet::renderLeaflet({
-    
-    leaflet::leaflet() %>%
+  leaflet::leaflet() %>%
     leaflet::addTiles() %>%
-        leaflet::addPolygons(data = boundaries,
-                    fillColor = bound_cols,
-                    fillOpacity = 0.1,
-                    color = "black",
-                    stroke = T,
-                    weight = 1,
-                    popup = boundaries$NAME) %>% 
-        leaflet::addCircleMarkers(data = locations,
-                         lng = ~jittered_lng,
-                         lat = ~jittered_lat,
-                         popup =  ~locations$`Facility Name`,
-                         radius = 5,
-                         color = "red") 
+    leaflet::addPolygons(data = boundaries,
+                         fillColor = bound_cols,
+                         fillOpacity = 0.1,
+                         color = "black",
+                         stroke = T,
+                         weight = 1,
+                         popup = boundaries$NAME) %>% 
+    leaflet::addCircleMarkers(data = locations,
+                              lng = ~jittered_lng,
+                              lat = ~jittered_lat,
+                              popup =  ~locations$`Facility Name`,
+                              radius = 5,
+                              color = "red") 
   })
   
+
   
- #   observe({
- #     filtered_type <- generationBySource %>%
- #       stringr::str_subset(pattern = input$source)
- #     
- #     leaflet::leafletProxy("alberta_map") %>%
- #       clearMarkers() %>%
- #       addMarkers(data = filtered_type,
- #                  lng = ~jittered)
- # 
- # })
-   
+
+  
 }
 
