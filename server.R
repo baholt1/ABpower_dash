@@ -30,19 +30,19 @@ server <- function(input, output) {
     
     map <- leaflet() %>%
         addTiles() %>%
+      addPolygons(data = boundaries,
+                  fillColor = bound_cols,
+                  fillOpacity = 0.1,
+                  color = "black",
+                  stroke = T,
+                  weight = 1,
+                  popup = ~boundaries$NAME) %>% 
         addCircleMarkers(data = locations,
                          lng = ~jittered_lng,
                          lat = ~jittered_lat,
                          popup =  ~locations$`Facility Name`,
                          radius = 5,
-                         color = "red") %>%
-        addPolygons(data = boundaries,
-                    fillColor = bound_cols,
-                    fillOpacity = 0.1,
-                    color = "black",
-                    stroke = T,
-                    weight = 1,
-                    popup = ~boundaries$NAME)
+                         color = "red") 
     
     return(map)
   })
