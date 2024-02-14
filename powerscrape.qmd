@@ -107,6 +107,7 @@ aesoDashSource %>%
 
 duel <- AESOsimpleTable(19, "duel fuel")
 
+
 aesoDashSource %>% 
   html_elements(css = "table") %>% 
   .[20] %>% 
@@ -185,4 +186,3 @@ generationBySource <- generationBySource %>%
 left_join(generationBySource, mastLocation, by = 'AssetID')
 
 ```
-
