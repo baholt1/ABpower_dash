@@ -1,0 +1,246 @@
+---
+title: "powerscrape"
+format: html
+editor: visual
+---
+
+```{r}
+library(rvest)
+library(tidyverse)
+
+
+
+
+#for tables without an applicable subtype (ie. gas does not work)
+AESOsimpleTable <- function(table, subtype) {
+  summary <- aesoDashSource %>% 
+  html_elements(css = "table") %>% 
+  .[table] %>% 
+  html_table() %>% 
+  .[[1]] 
+  
+  dateMST <- aesoDashSource %>% 
+  html_elements(css = "table") %>% 
+  .[5] %>% 
+    html_text() %>% 
+  .[[1]]
+  
+  dateMST <- str_extract(dateMST[1], "\\w{3} \\d{2}, \\d{4} \\d{2}:\\d{2}") %>% 
+    str_replace(",", "") %>% 
+    mdy_hm(tz = "America/Denver")
+  
+  colNames <- c("ASSET", "MC", "TNG", "DCR")
+  
+  type <- colnames(summary)
+  colnames(summary) <- colNames
+  
+  summary <- summary %>% 
+    mutate(type = type[[1]]) %>% 
+    # no applicable subtype; placeholder
+    mutate(subtype = subtype) %>% 
+    # redudant first row
+    filter(!ASSET %in% c("ASSET", "GROUP")) %>% 
+    mutate(date = dateMST)
+    
+  return(summary)
+}
+
+
+scrapeGen <- function(aesoDashSource ){
+
+# gas table
+gas <- aesoDashSource %>% 
+  html_elements(css = "table") %>% 
+  .[11] %>% 
+  html_table() %>% 
+  .[[1]] 
+
+# defining col names to be utilized
+colNames <- c("ASSET", "MC", "TNG", "DCR")
+
+# taking existing col names for type column
+type <- colnames(gas)
+
+# overwritting col names with def list
+colnames(gas) <- colNames
+
+
+dateMST <- aesoDashSource %>% 
+  html_elements(css = "table") %>% 
+  .[5] %>% 
+    html_text() %>% 
+  .[[1]]
+  
+dateMST <- str_extract(dateMST[1], "\\w{3} \\d{2}, \\d{4} \\d{2}:\\d{2}") %>% 
+    str_replace(",", "") %>% 
+    mdy_hm(tz = "America/Denver")
+
+
+gas <- gas %>% 
+  #adding type, per original column names at import
+  mutate(type = type[[1]]) %>% 
+  # finding divisional row, and where present, using them to define subtype
+  mutate(subtype = case_when(
+             ASSET %in% c("Simple Cycle", "Cogeneration", "Combined Cycle", "Gas Fired Steam") ~ ASSET)) %>% 
+  # fill remainder of subtype until new subtype
+  fill(subtype, .direction = c("down")) %>% 
+  # removing divsional rows (now that they are in column subtype)
+  filter(!ASSET %in% 
+           c("Simple Cycle", "Cogeneration", "Combined Cycle", "Gas Fired Steam", "ASSET")) %>% 
+  mutate(date = dateMST)
+  
+energyStor <- AESOsimpleTable(14, "energy storage")
+
+solar <- AESOsimpleTable(15, "solar")
+
+wind <- AESOsimpleTable(16, "wind")
+
+bioAndOther <- AESOsimpleTable(18, "biomass and other")
+
+duel <- AESOsimpleTable(19, "duel fuel")
+
+coal <- AESOsimpleTable(20, "coal")
+
+generationBySource <- rbind(gas, hydro, energyStor, solar, wind, bioAndOther, duel, coal)
+
+remove(gas, hydro, energyStor, solar, wind, bioAndOther, duel, coal)
+
+
+return(generationBySource)
+}
+
+
+scrapeSummary <- function(aesoDashSource){ 
+summary <- aesoDashSource %>% 
+  html_elements(css = "table") %>% 
+  .[7] %>% 
+  html_table() %>% 
+  .[[1]]
+  
+  
+colnames(summary) <- c("summary", "total", "drop")
+
+dateMST <- aesoDashSource %>% 
+  html_elements(css = "table") %>% 
+  .[5] %>% 
+    html_text() %>% 
+  .[[1]]
+  
+dateMST <- str_extract(dateMST[1], "\\w{3} \\d{2}, \\d{4} \\d{2}:\\d{2}") %>% 
+    str_replace(",", "") %>% 
+    mdy_hm(tz = "America/Denver")
+
+
+
+# dropping empty lg column
+summary <- summary %>% 
+  select(-drop) %>% 
+  mutate(date = dateMST)
+
+return(summary)  
+}
+
+
+scrapeTotalGen <- function(aesoDashSource){ 
+  
+
+  
+totalGeneration <- AESOsimpleTable(8, "total") %>% 
+  rename(GENERATION = ASSET)
+
+
+return(totalGeneration)  
+}
+
+
+scrapeInterchange <- function(aesoDashSource){ 
+
+  dateMST <- aesoDashSource %>% 
+  html_elements(css = "table") %>% 
+  .[5] %>% 
+    html_text() %>% 
+  .[[1]]
+  
+dateMST <- str_extract(dateMST[1], "\\w{3} \\d{2}, \\d{4} \\d{2}:\\d{2}") %>% 
+    str_replace(",", "") %>% 
+    mdy_hm(tz = "America/Denver")
+  
+  
+interchange <- aesoDashSource %>% 
+  html_elements(css = "table") %>% 
+  .[9] %>% 
+  html_table() %>% 
+  .[[1]]
+
+colnames(interchange) <- c("path", "interchangeFlow")
+
+interchange <- interchange %>% 
+  slice(-1) %>% 
+  mutate(date = dateMST)
+  
+return(interchange)  
+}
+  
+
+totalGenerationFull <- data.frame()
+  
+while(TRUE) {
+  sourceHTML <- read_html('http://ets.aeso.ca/ets_web/ip/Market/Reports/CSDReportServlet')
+  newGen <-  scrapeTotalGen(sourceHTML )
+  totalGenerationFull <- rbind(totalGenerationFull, newGen)
+  #insert the rest of the functions
+  Sys.sleep(120)
+}
+
+
+
+```
+
+```{r}
+library(tidyverse)
+
+#mastLocation <- rio::import('https://www.aeso.ca/assets/Uploads/grid-related-initiatives/Loss-Factors/Master-Loss-Factor-Location-List-for-2023_2022-05-27-4Posting.xlsx') 
+
+
+#colNames <- mastLocation %>% 
+ # slice(6) %>%
+#  unlist(use.names = FALSE)
+
+#colnames(mastLocation) <- colNames
+
+#mastLocation <- mastLocation %>% 
+#  slice(-1:-6) %>%
+#  separate_rows(`Source Asset`, sep = ",\\s*")
+
+#mastLocation <- mastLocation %>% 
+#  transmute(assetID = `Source Asset`, Owner, AreaName = `Area Name`, Number)
+
+#generationBySource <- generationBySource %>%
+#  mutate(assetID = str_extract(ASSET, "\\([A-Z0-9]{3,4}\\)")) %>%
+#  mutate(assetID = str_remove_all(assetID, "[\\(\\)]"))
+
+#left_join(generationBySource, mastLocation, by = 'assetID')
+
+#mastLocation %>% 
+ # drop_na() %>% 
+ # filter(!assetID %in% c("—", "-"))
+
+
+#unique(generationBySource$assetID)
+
+genFile <- read_csv("CSD Generation (Hourly) - 2024-01 2.csv")
+
+genFile <- genFile %>% 
+  transmute(assetID = `Asset Short Name`, planArea = `Planning Area`, region = Region) %>% 
+  group_by(assetID) %>% 
+  slice(1)
+  
+
+
+inner_join(generationBySource, genFile, by = 'assetID')
+
+
+
+
+
+```
