@@ -12,7 +12,7 @@ boundaries <- st_read("AESO-Planning-Areas-2020-06-23/AESO_Planning_Areas.shp") 
 
 #gen file with comprehensive area-asset mapping 
 genFile <- read_csv("CSD Generation (Hourly) - 2024-01 2.csv") %>% 
-  transmute(assetID = `Asset Short Name`, planArea = `Planning Area`, region = Region) %>% 
+  transmute(assetID = `Asset Short Name`, Area_ID = `Planning Area`, region = Region) %>% 
   group_by(assetID) %>% 
   slice(1)
 
@@ -144,18 +144,18 @@ scrapeGen <- function(aesoDashSource ){
   
   # extracting names from shape file to append to generation file
   boundariesJoin <- data.frame(boundaries$Area_ID, boundaries$NAME) %>% 
-    rename(planArea = boundaries.Area_ID, 
-           planAreaName = boundaries.NAME) %>% 
-    mutate(planArea = as.numeric(planArea))
+    rename(Area_ID = boundaries.Area_ID, 
+           Area_IDName = boundaries.NAME) %>% 
+    mutate(Area_ID = as.numeric(Area_ID))
   
   #adding planning area
   generationBySource <- left_join(generationBySource, genFile, by = 'assetID')
   
   #adding names assoc. w/ each planning area
-  generationBySource <- left_join(generationBySource, boundariesJoin, by = 'planArea') %>% 
+  generationBySource <- left_join(generationBySource, boundariesJoin, by = 'Area_ID') %>% 
     mutate(MC = as.numeric(MC),
            TNG = as.numeric(TNG),
-           DCR = as.numeric(DCR))
+           DCR = as.numeric(DCR)) 
   
   return(generationBySource)
 }
