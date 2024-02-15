@@ -1,51 +1,86 @@
 library(shiny)
-library(maps)
+library(dplyr)
 library(ggplot2)
-library(sf)
+library(plotly)
+library(leaflet)
+library(shinyjs)
 
 # Define server logic
-server <- function(input, output) {
+function(input, output, session) {
   
-  # Function to create Alberta map
-  output$alberta_map <- renderLeaflet({
-    path <- "C:/Users/holtb/OneDrive/Documents/UAlberta 2023-2024 Year 4/Winter 2024/FIN 488 FINTECH3/ABpower_dash/AESO-Planning-Areas-2020-06-23"
+  # Reactive value to store the fetched data
+  reactiveGenerationBySource <- reactiveVal()
+  
+  # Function to fetch and update data
+  updateData <- function() {
+    newData <- scrapeGen(read_html('http://ets.aeso.ca/ets_web/ip/Market/Reports/CSDReportServlet'))
+    reactiveGenerationBySource(newData)
+  }
+  
+  updateData()
+  
+  # Reactive expression for filtering
+  filteredData <- reactive({
+    data <- reactiveGenerationBySource()
     
-    boundaries <- sf::st_read(dsn = path)
+    if (input$typeInput != "All") {
+      data <- data %>%
+        filter(type == input$typeInput)
+    }
     
-    bound_cols <- rainbow(nrow(boundaries))
+    result <- data %>%
+      group_by(Area_ID) %>% 
+      dplyr::summarise(MC_sum = sum(MC), TNG_sum = sum(TNG)) %>% 
+      dplyr::mutate(cap_prop = round(TNG_sum / MC_sum * 100), 1) %>%
+      right_join(boundaries, by = "Area_ID") %>% 
+      replace_na(list(MC_sum = 0, TNG_sum = 0, cap_prop = 0))
     
-    ab.city <- canada.cities %>% 
-      dplyr::filter(country.etc == "AB") %>% 
-      dplyr::mutate(name = stringr::str_replace(name, 
-                                                pattern = " AB", 
-                                                replacement = ""))
-    locations <- merge(ab.city, 
-                       Master_Location, 
-                       by.x = "name", 
-                       by.y = "Area Name")
-    
-    locations$jittered_lng <- jitter(locations$long,
-                                     amount = 0.005)
-    locations$jittered_lat <- jitter(locations$lat)
-
-    
-    map <- leaflet() %>%
-        addTiles() %>%
-      addPolygons(data = boundaries,
-                  fillColor = bound_cols,
-                  fillOpacity = 0.1,
-                  color = "black",
-                  stroke = T,
-                  weight = 1,
-                  popup = ~boundaries$NAME) %>% 
-        addCircleMarkers(data = locations,
-                         lng = ~jittered_lng,
-                         lat = ~jittered_lat,
-                         popup =  ~locations$`Facility Name`,
-                         radius = 5,
-                         color = "red") 
-    
-    return(map)
+    result
   })
+  
+  observeEvent(input$refreshBtn, {
+    shinyjs::disable("refreshBtn")
+    updateData()
+    shinyjs::enable("refreshBtn")})
+  # Render the filtered map
+  output$alberta_map <- leaflet::renderLeaflet({
+    
+    var_x <- filteredData()[[input$colInput]]
+    # Assuming 'var_x' is your variable for coloring
+    range_max <- max(var_x, na.rm = TRUE)
+    
+    # If range_max is zero, add a small increment to ensure uniqueness in breaks
+    ifelse(range_max == 0, range_max <- 1, 0)
+    
+    # Create dynamic bins
+    dynamic_bins <- round(c(0, seq(10, range_max, length.out = 7)), digits = 0)
+    
+    # Use dynamic_bins in leaflet::colorBin
+    pal <- leaflet::colorBin(c("YlOrRd"), domain = var_x, bins = dynamic_bins)
+    
+    labss <- lapply(1:nrow(boundaries), function(i) {
+      HTML(paste("Area: ", boundaries$NAME[i], "<br>",
+                 "Output: ", var_x[i], "MW", "<br>",
+                 "Maximum Capacity: ", filteredData()$MC_sum[i], "MW", "<br>",
+                 "Total Generation: ", filteredData()$TNG_sum[i], "MW", "<br>",
+                 "Current Utilization Rate: ", filteredData()$cap_prop[i], "%"))
+    })
+    
+    leaflet::leaflet() %>%
+      leaflet::addTiles() %>%
+      leaflet::addPolygons(data = boundaries,
+                           fillColor = ~pal(var_x),
+                           fillOpacity = 0.8,
+                           color = "black",
+                           opacity = 1,
+                           stroke = T,
+                           weight = 1,
+                           label = labss,
+                           highlightOptions = highlightOptions(
+                             weight = 5,
+                             color = "#000",
+                             bringToFront = TRUE)) %>% 
+      addLegend(pal = pal, values = var_x, title = "Output in MW")
+  })
+  
 }
-
