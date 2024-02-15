@@ -42,6 +42,11 @@ function(input, output, session) {
     shinyjs::disable("refreshBtn")
     updateData()
     shinyjs::enable("refreshBtn")})
+  
+  output$currentDate <- renderText({
+    paste("Last Update: ", generationBySource$date[1])
+  })
+  
   # Render the filtered map
   output$alberta_map <- leaflet::renderLeaflet({
     
@@ -62,7 +67,7 @@ function(input, output, session) {
       HTML(paste("Area: ", boundaries$NAME[i], "<br>",
                  "Output: ", var_x[i], "MW", "<br>",
                  "Maximum Capacity: ", filteredData()$MC_sum[i], "MW", "<br>",
-                 "Total Generation: ", filteredData()$TNG_sum[i], "MW", "<br>",
+                 "Current Output: ", filteredData()$TNG_sum[i], "MW", "<br>",
                  "Current Utilization Rate: ", filteredData()$cap_prop[i], "%"))
     })
     
