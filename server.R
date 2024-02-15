@@ -30,7 +30,7 @@ function(input, output, session) {
     
     result <- data %>%
       group_by(Area_ID) %>% 
-      dplyr::summarise(MC_sum = sum(MC), TNG_sum = sum(TNG)) %>% 
+      dplyr::summarise(MC_sum = sum(MC), TNG_sum = sum(TNG), date = date[1]) %>% 
       dplyr::mutate(cap_prop = round(TNG_sum / MC_sum * 100), 1) %>%
       right_join(boundaries, by = "Area_ID") %>% 
       replace_na(list(MC_sum = 0, TNG_sum = 0, cap_prop = 0))
@@ -43,12 +43,11 @@ function(input, output, session) {
     updateData()
     shinyjs::enable("refreshBtn")})
   
-  output$currentDate <- renderText({
-    paste("Last Update: ", generationBySource$date[1])
-  })
-  
   # Render the filtered map
   output$alberta_map <- leaflet::renderLeaflet({
+    output$currentDate <- renderText({
+      paste("Last Update: ", filteredData()$date[1])
+    })
     
     var_x <- filteredData()[[input$colInput]]
     # Assuming 'var_x' is your variable for coloring
@@ -75,7 +74,7 @@ function(input, output, session) {
       leaflet::addTiles() %>%
       leaflet::addPolygons(data = boundaries,
                            fillColor = ~pal(var_x),
-                           fillOpacity = 0.8,
+                           fillOpacity = 0.75,
                            color = "black",
                            opacity = 1,
                            stroke = T,
