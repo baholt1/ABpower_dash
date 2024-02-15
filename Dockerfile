@@ -1,13 +1,17 @@
-FROM --platform=linux/amd64 rocker/shiny-verse:latest
+FROM rocker/shiny-verse:latest
 RUN apt-get update && apt-get install -y git
 
+RUN apt-get update && apt-get install -y \
+    libssl-dev \
+    libcurl4-gnutls-dev \
+    libxml2-dev \
+    libfontconfig1-dev
 
-# Create and set the working directory
-WORKDIR /srv/shiny-server
+RUN R -e "install.packages(c('tidyverse', 'plotly', 'maps', 'r-spatial/sf', 'rvest', 'leaflet'), dependencies = TRUE, repos = 'https://packagemanager.rstudio.com/cran/latest')"
+
 
 # Install from GitHub repository
 RUN git clone https://github.com/cbeebe27/ABpower_dash.git /srv/shiny-server/ABpower_dash
-RUN Rscript /srv/shiny-server/ABpower_dash/requirements.R
 
 # Make the Shiny app available at port 3838
 EXPOSE 3838
