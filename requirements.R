@@ -1,1 +1,1 @@
-install.packages("tidyverse", "plotly", "shiny", "maps", "sf", "rvest", "leaflet")
+install.packages(c("tidyverse", "plotly", "shiny", "maps", "sf", "rvest", "leaflet"))
