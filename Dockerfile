@@ -5,7 +5,14 @@ RUN apt-get update && apt-get install -y \
     libssl-dev \
     libcurl4-gnutls-dev \
     libxml2-dev \
-    libfontconfig1-dev
+    libfontconfig1-dev \
+    libudunits2-dev \
+    libgdal-dev \
+    libgeos-dev \
+    libproj-dev \
+    libv8-dev \
+    libcairo2-dev \
+    libxt-dev
 
 RUN R -e "install.packages(c('tidyverse', 'sf', 'plotly', 'maps', 'rvest', 'leaflet'), dependencies = TRUE, repos = 'https://packagemanager.rstudio.com/cran/latest')"
 
