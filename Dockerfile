@@ -14,7 +14,7 @@ RUN apt-get update && apt-get install -y \
     libcairo2-dev \
     libxt-dev
 
-RUN R -e "install.packages(c('tidyverse', 'sf', 'plotly', 'maps', 'rvest', 'leaflet', 'shinythemes'), dependencies = TRUE, repos = 'https://packagemanager.rstudio.com/cran/latest')"
+RUN R -e "install.packages(c('tidyverse', 'sf', 'plotly', 'maps', 'rvest', 'leaflet', 'shinythemes', 'shinyjs'), dependencies = TRUE, repos = 'https://packagemanager.rstudio.com/cran/latest')"
 
 # Install from GitHub repository
 RUN git clone https://github.com/cbeebe27/ABpower_dash.git /srv/shiny-server/ABpower_dash
