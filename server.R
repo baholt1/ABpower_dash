@@ -3,6 +3,7 @@ library(dplyr)
 library(ggplot2)
 library(plotly)
 library(leaflet)
+library(shinyjs)
 
 # Define server logic
 function(input, output, session) {
@@ -29,32 +30,18 @@ function(input, output, session) {
     
     result <- data %>%
       group_by(Area_ID) %>% 
-      summarise(MC_sum = sum(MC), TNG_sum = sum(TNG), DCR_sum = sum(DCR)) %>% 
+      dplyr::summarise(MC_sum = sum(MC), TNG_sum = sum(TNG)) %>% 
+      dplyr::mutate(cap_prop = round(TNG_sum / MC_sum * 100), 1) %>%
       right_join(boundaries, by = "Area_ID") %>% 
-      replace_na(list(MC_sum = 0, TNG_sum = 0, DCR_sum = 0))
+      replace_na(list(MC_sum = 0, TNG_sum = 0, cap_prop = 0))
     
     result
   })
   
-  
-
-  # Render the filtered table
-  # output$filteredTable <- renderTable({
-  #   filteredData()
-  # })
-  
-  # Update the selectInput choices dynamically based on the updated data
-  # observe({
-  #   updateSelectInput(session, "typeInput", choices = unique(reactiveGenerationBySource()$type))
-  # })
-    
-  # Create table of production by region
-  production_table <-  generationBySource %>% 
-    dplyr::group_by(Area_ID) %>% 
-    dplyr::summarise(MC_sum = sum(MC), TNG_sum = sum(TNG), DCR_sum = sum(DCR)) %>% 
-    dplyr::right_join(boundaries, by = "Area_ID") %>% 
-    replace_na(list(MC_sum = 0, TNG_sum = 0, DCR_sum = 0))
-  
+  observeEvent(input$refreshBtn, {
+    shinyjs::disable("refreshBtn")
+    updateData()
+    shinyjs::enable("refreshBtn")})
   # Render the filtered map
   output$alberta_map <- leaflet::renderLeaflet({
     
@@ -69,21 +56,21 @@ function(input, output, session) {
     dynamic_bins <- round(c(0, seq(10, range_max, length.out = 7)), digits = 0)
     
     # Use dynamic_bins in leaflet::colorBin
-    pal <- leaflet::colorBin("YlOrRd", domain = var_x, bins = dynamic_bins)
+    pal <- leaflet::colorBin(c("YlOrRd"), domain = var_x, bins = dynamic_bins)
     
     labss <- lapply(1:nrow(boundaries), function(i) {
       HTML(paste("Area: ", boundaries$NAME[i], "<br>",
                  "Output: ", var_x[i], "MW", "<br>",
-                 "Maximum Capability: ", filteredData()$MC_sum[i], "MW", "<br>",
-                 "Total Net Generation: ", filteredData()$TNG_sum[i], "MW", "<br>",
-                 "Dispatched Contingency Reserve: ", filteredData()$DCR_sum[i], "MW"))
+                 "Maximum Capacity: ", filteredData()$MC_sum[i], "MW", "<br>",
+                 "Total Generation: ", filteredData()$TNG_sum[i], "MW", "<br>",
+                 "Current Utilization Rate: ", filteredData()$cap_prop[i], "%"))
     })
     
     leaflet::leaflet() %>%
       leaflet::addTiles() %>%
       leaflet::addPolygons(data = boundaries,
                            fillColor = ~pal(var_x),
-                           fillOpacity = 0.7,
+                           fillOpacity = 0.8,
                            color = "black",
                            opacity = 1,
                            stroke = T,
@@ -93,13 +80,7 @@ function(input, output, session) {
                              weight = 5,
                              color = "#000",
                              bringToFront = TRUE)) %>% 
-      addLegend(pal = pal, values = var_x, title = "Output in MW") %>%
-      leaflet::addCircleMarkers(data = locations,
-                                lng = ~jittered_lng,
-                                lat = ~jittered_lat,
-                                popup =  ~locations$`Facility Name`,
-                                radius = 1,
-                                color = "red")
+      addLegend(pal = pal, values = var_x, title = "Output in MW")
   })
   
 }
