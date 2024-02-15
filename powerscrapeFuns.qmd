@@ -197,6 +197,10 @@ while(TRUE) {
 ```
 
 ```{r}
+```
+
+
+```{r}
 library(tidyverse)
 
 #mastLocation <- rio::import('https://www.aeso.ca/assets/Uploads/grid-related-initiatives/Loss-Factors/Master-Loss-Factor-Location-List-for-2023_2022-05-27-4Posting.xlsx') 
@@ -215,9 +219,9 @@ library(tidyverse)
 #mastLocation <- mastLocation %>% 
 #  transmute(assetID = `Source Asset`, Owner, AreaName = `Area Name`, Number)
 
-#generationBySource <- generationBySource %>%
-#  mutate(assetID = str_extract(ASSET, "\\([A-Z0-9]{3,4}\\)")) %>%
-#  mutate(assetID = str_remove_all(assetID, "[\\(\\)]"))
+generationBySource <- generationBySource %>%
+  mutate(assetID = str_extract(ASSET, "\\([A-Z0-9]{3,4}\\)")) %>%
+  mutate(assetID = str_remove_all(assetID, "[\\(\\)]"))
 
 #left_join(generationBySource, mastLocation, by = 'assetID')
 
@@ -244,3 +248,132 @@ inner_join(generationBySource, genFile, by = 'assetID')
 
 
 ```
+
+
+```{r}
+scrapeGen <- function(aesoDashSource ){
+  
+  AESOsimpleTable <- function(table, subtype) {
+    summary <- aesoDashSource %>% 
+      html_elements(css = "table") %>% 
+      .[table] %>% 
+      html_table() %>% 
+      .[[1]] 
+    
+    dateMST <- aesoDashSource %>% 
+      html_elements(css = "table") %>% 
+      .[5] %>% 
+      html_text() %>% 
+      .[[1]]
+    
+    dateMST <- str_extract(dateMST[1], "\\w{3} \\d{2}, \\d{4} \\d{2}:\\d{2}") %>% 
+      str_replace(",", "") %>% 
+      mdy_hm(tz = "America/Denver")
+    
+    colNames <- c("ASSET", "MC", "TNG", "DCR")
+    
+    type <- colnames(summary)
+    colnames(summary) <- colNames
+    
+    summary <- summary %>% 
+      mutate(type = type[[1]]) %>% 
+      # no applicable subtype; placeholder
+      mutate(subtype = subtype) %>% 
+      # redudant first row
+      filter(!ASSET %in% c("ASSET", "GROUP")) %>% 
+      mutate(date = dateMST)
+    
+    return(summary)
+  }
+  
+  # gas table
+  gas <- aesoDashSource %>% 
+    html_elements(css = "table") %>% 
+    .[11] %>% 
+    html_table() %>% 
+    .[[1]] 
+  
+  # defining col names to be utilized
+  colNames <- c("ASSET", "MC", "TNG", "DCR")
+  
+  # taking existing col names for type column
+  type <- colnames(gas)
+  
+  # overwritting col names with def list
+  colnames(gas) <- colNames
+  
+  
+  dateMST <- aesoDashSource %>% 
+    html_elements(css = "table") %>% 
+    .[5] %>% 
+    html_text() %>% 
+    .[[1]]
+  
+  dateMST <- str_extract(dateMST[1], "\\w{3} \\d{2}, \\d{4} \\d{2}:\\d{2}") %>% 
+    str_replace(",", "") %>% 
+    mdy_hm(tz = "America/Denver")
+  
+  
+  gas <- gas %>% 
+    #adding type, per original column names at import
+    mutate(type = type[[1]]) %>% 
+    # finding divisional row, and where present, using them to define subtype
+    mutate(subtype = case_when(
+      ASSET %in% c("Simple Cycle", "Cogeneration", "Combined Cycle", "Gas Fired Steam") ~ ASSET)) %>% 
+    # fill remainder of subtype until new subtype
+    fill(subtype, .direction = c("down")) %>% 
+    # removing divsional rows (now that they are in column subtype)
+    filter(!ASSET %in% 
+             c("Simple Cycle", "Cogeneration", "Combined Cycle", "Gas Fired Steam", "ASSET")) %>% 
+    mutate(date = dateMST)
+  
+  hydro <- AESOsimpleTable(13, "hydro")
+  
+  energyStor <- AESOsimpleTable(14, "energy storage")
+  
+  solar <- AESOsimpleTable(15, "solar")
+  
+  wind <- AESOsimpleTable(16, "wind")
+  
+  bioAndOther <- AESOsimpleTable(18, "biomass and other")
+  
+  duel <- AESOsimpleTable(19, "duel fuel")
+  
+  coal <- AESOsimpleTable(20, "coal")
+  
+  generationBySource <- rbind(gas, hydro, energyStor, solar, wind, bioAndOther, duel, coal)
+  
+  return(generationBySource)
+}
+
+gen <- scrapeGen(read_html('http://ets.aeso.ca/ets_web/ip/Market/Reports/CSDReportServlet'))
+
+gen <- gen %>%
+  mutate(assetID = str_extract(ASSET, "\\([A-Z0-9]{3,4}\\)")) %>%
+  mutate(assetID = str_remove_all(assetID, "[\\(\\)]"))
+
+
+genFile <- read_csv("CSD Generation (Hourly) - 2024-01 2.csv")
+
+genFile <- genFile %>% 
+  transmute(assetID = `Asset Short Name`, planArea = `Planning Area`, region = Region) %>% 
+  group_by(assetID) %>% 
+  slice(1)
+  
+
+
+gen <- left_join(gen, genFile, by = 'assetID')
+
+boundaries <- st_read("shiny update/AESO-Planning-Areas-2020-06-23/AESO_Planning_Areas.shp")
+
+# extracting names from shape file to append to generation file
+boundariesJoin <- data.frame(boundaries$Area_ID, boundaries$NAME) %>% 
+  rename(planArea = boundaries.Area_ID, 
+         planAreaName = boundaries.NAME) %>% 
+  mutate(planArea = as.numeric(planArea))
+
+
+left_join(gen, boundariesJoin, by = 'planArea')
+
+```
+
