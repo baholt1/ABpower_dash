@@ -6,7 +6,15 @@ library(tidyverse)
 library(rvest)
 
 
-boundaries <- st_read("AESO-Planning-Areas-2020-06-23/AESO_Planning_Areas.shp")
+boundaries <- st_read("AESO-Planning-Areas-2020-06-23/AESO_Planning_Areas.shp") %>% 
+  mutate(Area_ID = as.numeric(Area_ID)) 
+
+
+#gen file with comprehensive area-asset mapping 
+genFile <- read_csv("CSD Generation (Hourly) - 2024-01 2.csv") %>% 
+  transmute(assetID = `Asset Short Name`, planArea = `Planning Area`, region = Region) %>% 
+  group_by(assetID) %>% 
+  slice(1)
 
 
 Master_Location <- read_excel("Master-Location.xlsx")
@@ -129,6 +137,25 @@ scrapeGen <- function(aesoDashSource ){
   coal <- AESOsimpleTable(20, "coal")
   
   generationBySource <- rbind(gas, hydro, energyStor, solar, wind, bioAndOther, duel, coal)
+  
+  generationBySource <- generationBySource %>%
+    mutate(assetID = str_extract(ASSET, "\\([A-Z0-9]{3,4}\\)")) %>%
+    mutate(assetID = str_remove_all(assetID, "[\\(\\)]"))
+  
+  # extracting names from shape file to append to generation file
+  boundariesJoin <- data.frame(boundaries$Area_ID, boundaries$NAME) %>% 
+    rename(planArea = boundaries.Area_ID, 
+           planAreaName = boundaries.NAME) %>% 
+    mutate(planArea = as.numeric(planArea))
+  
+  #adding planning area
+  generationBySource <- left_join(generationBySource, genFile, by = 'assetID')
+  
+  #adding names assoc. w/ each planning area
+  generationBySource <- left_join(generationBySource, boundariesJoin, by = 'planArea') %>% 
+    mutate(MC = as.numeric(MC),
+           TNG = as.numeric(TNG),
+           DCR = as.numeric(DCR))
   
   return(generationBySource)
 }

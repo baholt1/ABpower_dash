@@ -12,8 +12,6 @@ function(input, output, session) {
   
   # Function to fetch and update data
   updateData <- function() {
-    # Assuming scrapeGen() fetches and processes your data
-    # Update this function call if it requires different handling
     newData <- scrapeGen(read_html('http://ets.aeso.ca/ets_web/ip/Market/Reports/CSDReportServlet'))
     reactiveGenerationBySource(newData)
   }
@@ -22,11 +20,14 @@ function(input, output, session) {
   
   # Reactive expression for filtering
   filteredData <- reactive({
-    req(reactiveGenerationBySource())  # Ensure data is available before proceeding
+    req(reactiveGenerationBySource())
     reactiveGenerationBySource() %>%
       filter(type == input$typeInput) %>% 
       select(-c(type, subtype, date))
+    
   })
+  
+  
   
   # Render the filtered table
   output$filteredTable <- renderTable({
@@ -37,32 +38,40 @@ function(input, output, session) {
   observe({
     updateSelectInput(session, "typeInput", choices = unique(reactiveGenerationBySource()$type))
   })
-
-  
-
+    
+  # Create table of production by region
+  production_table <- generationBySource %>% 
+    dplyr::rename(Area_ID = planArea) %>%
+    dplyr::group_by(Area_ID) %>% 
+    dplyr::summarise(MC_sum = sum(MC), TNG_sum = sum(TNG), DCR_sum = sum(DCR)) %>% 
+    dplyr::left_join(boundaries, by = "Area_ID")
+      
+  bins <- c(0, 10, 20, 50, 100, 200, 500, 1000, 100000)
+  pal <- leaflet::colorBin("YlOrRd", domain = production_table$TNG_sum, bins = bins)
   
   # Render the filtered map
   output$alberta_map <- leaflet::renderLeaflet({
-  leaflet::leaflet() %>%
-    leaflet::addTiles() %>%
-    leaflet::addPolygons(data = boundaries,
-                         fillColor = bound_cols,
-                         fillOpacity = 0.1,
-                         color = "black",
-                         stroke = T,
-                         weight = 1,
-                         popup = boundaries$NAME) %>% 
-    leaflet::addCircleMarkers(data = locations,
-                              lng = ~jittered_lng,
-                              lat = ~jittered_lat,
-                              popup =  ~locations$`Facility Name`,
-                              radius = 5,
-                              color = "red") 
+    leaflet::leaflet() %>%
+      leaflet::addTiles() %>%
+      leaflet::addPolygons(data = boundaries,
+                           fillColor = ~pal(production_table$TNG_sum),
+                           fillOpacity = 0.7,
+                           color = "black",
+                           opacity = 1,
+                           stroke = T,
+                           weight = 1,
+                           popup = boundaries$NAME,
+                           highlightOptions = highlightOptions(
+                             weight = 5,
+                             color = "#000",
+                             bringToFront = TRUE)) %>% 
+      addLegend(pal = pal, values = production_table$TNG_sum) %>%
+      leaflet::addCircleMarkers(data = locations,
+                                lng = ~jittered_lng,
+                                lat = ~jittered_lat,
+                                popup =  ~locations$`Facility Name`,
+                                radius = 1,
+                                color = "red")
   })
   
-
-  
-
-  
 }
-
