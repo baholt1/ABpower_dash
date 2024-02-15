@@ -8,8 +8,7 @@ RUN apt-get update && apt-get install -y \
     libfontconfig1-dev
 
 RUN R -e "install.packages(c('tidyverse', 'plotly', 'maps', 'sf', 'rvest', 'leaflet'), dependencies = TRUE, repos = 'https://packagemanager.rstudio.com/cran/latest')"
-# Create and set the working directory
-WORKDIR /srv/shiny-server
+
 
 # Install from GitHub repository
 RUN git clone https://github.com/cbeebe27/ABpower_dash.git /srv/shiny-server/ABpower_dash
