@@ -13,7 +13,6 @@ WORKDIR /srv/shiny-server
 
 # Install from GitHub repository
 RUN git clone https://github.com/cbeebe27/ABpower_dash.git /srv/shiny-server/ABpower_dash
-RUN Rscript /srv/shiny-server/ABpower_dash/requirements.R
 
 # Make the Shiny app available at port 3838
 EXPOSE 3838
