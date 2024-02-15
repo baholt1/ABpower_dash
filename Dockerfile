@@ -5,7 +5,7 @@ RUN apt-get update && apt-get install -y git
 WORKDIR /srv/shiny-server
 
 # Install from GitHub repository
-RUN git clone https://github.com/cbeebe27/ABpower_dash.git /srv/shiny-server/ABpower_dash
+RUN git clone -b Brooklyn https://github.com/cbeebe27/ABpower_dash.git /srv/shiny-server/ABpower_dash
 RUN Rscript /srv/shiny-server/ABpower_dash/requirements.R
 
 # Make the Shiny app available at port 3838
