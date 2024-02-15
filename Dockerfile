@@ -7,10 +7,7 @@ RUN apt-get update && apt-get install -y \
     libxml2-dev \
     libfontconfig1-dev
 
-RUN R -e "install.packages(c('tidyverse', 'plotly', 'maps', 'sf', 'rvest', 'leaflet'), dependencies = TRUE, repos = 'https://packagemanager.rstudio.com/cran/latest')"
-
-RUN echo "library(magrittr)" >> /usr/local/lib/R/site-library/00-first-packages.R
-
+RUN R -e install.packages(c('tidyverse', 'plotly', 'maps', 'sf', 'rvest', 'leaflet'), dependencies = TRUE, repos = 'https://packagemanager.rstudio.com/cran/latest')
 # Create and set the working directory
 WORKDIR /srv/shiny-server
 
