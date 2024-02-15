@@ -7,9 +7,7 @@ RUN apt-get update && apt-get install -y \
     libxml2-dev \
     libfontconfig1-dev
 
-RUN R -e "install.packages(c('tidyverse', 'plotly', 'maps', 'rvest', 'leaflet'), dependencies = TRUE, repos = 'https://packagemanager.rstudio.com/cran/latest')"
-
-RUN R -e "install_github("r-spatial/sf")"
+RUN R -e "install.packages(c('tidyverse', 'sf', 'plotly', 'maps', 'rvest', 'leaflet'), dependencies = TRUE, repos = 'https://packagemanager.rstudio.com/cran/latest')"
 
 # Install from GitHub repository
 RUN git clone https://github.com/cbeebe27/ABpower_dash.git /srv/shiny-server/ABpower_dash
