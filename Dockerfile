@@ -1,4 +1,4 @@
-FROM rocker/shiny
+FROM rocker/shiny-verse
 
 
 # Set the working directory for the app
@@ -6,7 +6,7 @@ WORKDIR /srv/shiny-server
 
 # Install from GitHub repository
 RUN git clone -b Brooklyn https://github.com/cbeebe27/ABpower_dash.git /srv/shiny-server/ABpower_dash
-RUN Rscript /srv/shiny-server/ABpower_dash/requirements.R
+RUN R -e "install.packages(c("tidyverse", "plotly", "shiny", "maps", "sf", "rvest", "leaflet"))"
 
 # Make the Shiny app available at port 3838
 EXPOSE 3838
