@@ -4,6 +4,8 @@ library(maps)
 library(sf)
 library(tidyverse)
 library(rvest)
+library(dplyr)
+library(magrittr)
 
 
 boundaries <- st_read("AESO-Planning-Areas-2020-06-23/AESO_Planning_Areas.shp")
