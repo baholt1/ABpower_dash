@@ -12,51 +12,52 @@ function(input, output, session) {
   
   # Function to fetch and update data
   updateData <- function() {
-    newData <- scrapeGen(read_html('http://ets.aeso.ca/ets_web/ip/Market/Reports/CSDReportServlet'))
-    reactiveGenerationBySource(newData)
+              newData <- scrapeGen(read_html('http://ets.aeso.ca/ets_web/ip/Market/Reports/CSDReportServlet'))
+              reactiveGenerationBySource(newData)
   }
   
   updateData()
   
-  # Reactive expression for filtering
-  filteredData <- shiny::reactive({
-    data <- reactiveGenerationBySource()
-    
-    if (input$typeInput != "All") {
-      data <- data %>%
-        filter(type == input$typeInput)
-    }
-    
-    result <- data %>%
-      dplyr::group_by(Area_ID) %>% 
-      dplyr::summarise(MC_sum = sum(MC), TNG_sum = sum(TNG), date = date[1]) %>% 
-      dplyr::mutate(cap_prop = round(TNG_sum / MC_sum * 100), 1) %>%
-      dplyr::right_join(boundaries, by = "Area_ID") %>% 
-      tidyr::replace_na(list(MC_sum = 0, TNG_sum = 0, cap_prop = 0))
-    result
-  })
-  
   shiny::observeEvent(input$refreshBtn, {
-    updateData()
-    })
+    updateData()})
+  
+  # reactive expression for filtering
+  filteredData <- shiny::reactive({
+                  data <- reactiveGenerationBySource()
+                  
+                  if (input$typeInput != "All") {
+                    if(input$gasInput != "All"){
+                      data <- data %>%
+                      dplyr::filter(subtype == input$gasInput)
+                    } else {
+                    data <- data %>%
+                      dplyr::filter(type == input$typeInput)
+                      }
+                    }
+                  
+                  result <- data %>%
+                    dplyr::group_by(Area_ID) %>% 
+                    dplyr::summarise(MC_sum = sum(MC), TNG_sum = sum(TNG), date = date[1]) %>% 
+                    dplyr::mutate(cap_prop = round(TNG_sum / MC_sum * 100), 1) %>%
+                    dplyr::right_join(boundaries, by = "Area_ID") %>% 
+                    tidyr::replace_na(list(MC_sum = 0, TNG_sum = 0, cap_prop = 0))
+                  result
+                })
   
   # Render the filtered map
   output$alberta_map <- leaflet::renderLeaflet({
     output$currentDate <- shiny::renderText({
       paste("Last Update: ", filteredData()$date[1])
     })
+    # get user input for desired output
     
     var_x <- filteredData()[[input$colInput]]
-    # Assuming 'var_x' is your variable for coloring
     range_max <- max(var_x, na.rm = TRUE)
-    
-    # If range_max is zero, add a small increment to ensure uniqueness in breaks
+    # if range_max is zero, add a small increment to ensure uniqueness in breaks
     ifelse(range_max == 0, range_max <- 1, 0)
-    
-    # Create dynamic bins
+    # create dynamic bins
     dynamic_bins <- round(c(0, seq(10, range_max, length.out = 7)), digits = 0)
-    
-    # Use dynamic_bins in leaflet::colorBin
+    # color palette
     pal <- leaflet::colorBin(c("YlOrRd"), domain = var_x, bins = dynamic_bins)
     
     labss <- lapply(1:nrow(boundaries), function(i) {
@@ -65,7 +66,8 @@ function(input, output, session) {
                  "Maximum Capacity: ", filteredData()$MC_sum[i], "MW", "<br>",
                  "Current Output: ", filteredData()$TNG_sum[i], "MW", "<br>",
                  "Current Utilization Rate: ", filteredData()$cap_prop[i], "%"))
-    })
+      }
+    )
     
     leaflet::leaflet() %>%
       leaflet::addTiles() %>%
@@ -82,6 +84,6 @@ function(input, output, session) {
                              color = "#000",
                              bringToFront = TRUE)) %>% 
       leaflet::addLegend(pal = pal, values = var_x, title = "Output in MW")
-  })
-  
+    }
+  )
 }
