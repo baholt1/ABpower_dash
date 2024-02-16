@@ -3,35 +3,38 @@ library(tidyverse)
 library(readxl)
 library(maps)
 library(sf)
-library(tidyverse)
 library(rvest)
+library(grDevices)
 
 
 
-boundaries <- st_read("AESO-Planning-Areas-2020-06-23/AESO_Planning_Areas.shp") %>% 
+boundaries_1 <- st_read("AESO-Planning-Areas-2020-06-23/AESO_Planning_Areas.shp") 
+
+boundaries <- sf::st_as_sf(boundaries_1, coords = c("long", "lat"), crs = "+proj=longlat +datum=NAD83 +no_defs") %>% 
+  sf::st_transform( crs = "+proj=longlat +datum=WGS84") %>% 
   mutate(Area_ID = as.numeric(Area_ID)) 
 
 
 #gen file with comprehensive area-asset mapping 
 genFile <- read_csv("CSD Generation (Hourly) - 2024-01 2.csv") %>% 
-  transmute(assetID = `Asset Short Name`, Area_ID = `Planning Area`, region = Region) %>% 
-  group_by(assetID) %>% 
-  slice(1)
+  dplyr::transmute(assetID = `Asset Short Name`, Area_ID = `Planning Area`, region = Region) %>% 
+  dplyr::group_by(assetID) %>% 
+  dplyr::slice(1)
 
 
 Master_Location <- read_excel("Master-Location.xlsx")
 
 colNames <- Master_Location %>% 
-  slice(6) %>%
+  dplyr::slice(6) %>%
   unlist(use.names = FALSE)
 
 colnames(Master_Location) <- colNames
 
 Master_Location <- Master_Location %>% 
-  slice(-1:-6)
+  dplyr::slice(-1:-6)
 
 
-bound_cols <- rainbow(nrow(boundaries))
+bound_cols <- grDevices::rainbow(nrow(boundaries))
 
 
 ab.city <- maps::canada.cities %>% 
@@ -58,14 +61,14 @@ scrapeGen <- function(aesoDashSource ){
       .[[1]] 
     
     dateMST <- aesoDashSource %>% 
-      html_elements(css = "table") %>% 
+      rvest::html_elements(css = "table") %>% 
       .[5] %>% 
-      html_text() %>% 
+      rvest::html_text() %>% 
       .[[1]]
     
-    dateMST <- str_extract(dateMST[1], "\\w{3} \\d{2}, \\d{4} \\d{2}:\\d{2}") %>% 
-      str_replace(",", "") %>% 
-      mdy_hm(tz = "America/Denver")
+    dateMST <- stringr::str_extract(dateMST[1], "\\w{3} \\d{2}, \\d{4} \\d{2}:\\d{2}") %>% 
+      stringr::str_replace(",", "") %>% 
+      lubridate::mdy_hm(tz = "America/Denver")
     
     colNames <- c("ASSET", "MC", "TNG", "DCR")
     
@@ -73,21 +76,21 @@ scrapeGen <- function(aesoDashSource ){
     colnames(summary) <- colNames
     
     summary <- summary %>% 
-      mutate(type = type[[1]]) %>% 
+      dplyr::mutate(type = type[[1]]) %>% 
       # no applicable subtype; placeholder
-      mutate(subtype = subtype) %>% 
+      dplyr::mutate(subtype = subtype) %>% 
       # redudant first row
-      filter(!ASSET %in% c("ASSET", "GROUP")) %>% 
-      mutate(date = dateMST)
+      dplyr::filter(!ASSET %in% c("ASSET", "GROUP")) %>% 
+      dplyr::mutate(date = dateMST)
     
     return(summary)
   }
   
   # gas table
   gas <- aesoDashSource %>% 
-    html_elements(css = "table") %>% 
+    rvest::html_elements(css = "table") %>% 
     .[11] %>% 
-    html_table() %>% 
+    rvest::html_table() %>% 
     .[[1]] 
   
   # defining col names to be utilized
@@ -101,28 +104,28 @@ scrapeGen <- function(aesoDashSource ){
   
   
   dateMST <- aesoDashSource %>% 
-    html_elements(css = "table") %>% 
+    rvest::html_elements(css = "table") %>% 
     .[5] %>% 
-    html_text() %>% 
+    rvest::html_text() %>% 
     .[[1]]
   
-  dateMST <- str_extract(dateMST[1], "\\w{3} \\d{2}, \\d{4} \\d{2}:\\d{2}") %>% 
-    str_replace(",", "") %>% 
-    mdy_hm(tz = "America/Denver")
+  dateMST <- stringr::str_extract(dateMST[1], "\\w{3} \\d{2}, \\d{4} \\d{2}:\\d{2}") %>% 
+    stringr::str_replace(",", "") %>% 
+    lubridate::mdy_hm(tz = "America/Denver")
   
   
   gas <- gas %>% 
     #adding type, per original column names at import
-    mutate(type = type[[1]]) %>% 
+    dplyr::mutate(type = type[[1]]) %>% 
     # finding divisional row, and where present, using them to define subtype
-    mutate(subtype = case_when(
+    dplyr::mutate(subtype = case_when(
       ASSET %in% c("Simple Cycle", "Cogeneration", "Combined Cycle", "Gas Fired Steam") ~ ASSET)) %>% 
     # fill remainder of subtype until new subtype
-    fill(subtype, .direction = c("down")) %>% 
+    tidyr::fill(subtype, .direction = c("down")) %>% 
     # removing divsional rows (now that they are in column subtype)
-    filter(!ASSET %in% 
+    dplyr::filter(!ASSET %in% 
              c("Simple Cycle", "Cogeneration", "Combined Cycle", "Gas Fired Steam", "ASSET")) %>% 
-    mutate(date = dateMST)
+    dplyr::mutate(date = dateMST)
   
   hydro <- AESOsimpleTable(13, "hydro")
   
@@ -141,21 +144,21 @@ scrapeGen <- function(aesoDashSource ){
   generationBySource <- rbind(gas, hydro, energyStor, solar, wind, bioAndOther, duel, coal)
   
   generationBySource <- generationBySource %>%
-    mutate(assetID = str_extract(ASSET, "\\([A-Z0-9]{3,4}\\)")) %>%
-    mutate(assetID = str_remove_all(assetID, "[\\(\\)]"))
+    dplyr::mutate(assetID = str_extract(ASSET, "\\([A-Z0-9]{3,4}\\)")) %>%
+    dplyr::mutate(assetID = str_remove_all(assetID, "[\\(\\)]"))
   
   # extracting names from shape file to append to generation file
   boundariesJoin <- data.frame(boundaries$Area_ID, boundaries$NAME) %>% 
-    rename(Area_ID = boundaries.Area_ID, 
+    dplyr::rename(Area_ID = boundaries.Area_ID, 
            Area_IDName = boundaries.NAME) %>% 
-    mutate(Area_ID = as.numeric(Area_ID))
+    dplyr::mutate(Area_ID = as.numeric(Area_ID))
   
   #adding planning area
-  generationBySource <- left_join(generationBySource, genFile, by = 'assetID')
+  generationBySource <- dplyr::left_join(generationBySource, genFile, by = 'assetID')
   
   #adding names assoc. w/ each planning area
-  generationBySource <- left_join(generationBySource, boundariesJoin, by = 'Area_ID') %>% 
-    mutate(MC = as.numeric(MC),
+  generationBySource <- dplyr::left_join(generationBySource, boundariesJoin, by = 'Area_ID') %>% 
+    dplyr::mutate(MC = as.numeric(MC),
            TNG = as.numeric(TNG),
            DCR = as.numeric(DCR)) 
   
@@ -163,4 +166,4 @@ scrapeGen <- function(aesoDashSource ){
 }
 
 
-generationBySource <- scrapeGen(read_html('http://ets.aeso.ca/ets_web/ip/Market/Reports/CSDReportServlet'))
+generationBySource <- scrapeGen(rvest::read_html('http://ets.aeso.ca/ets_web/ip/Market/Reports/CSDReportServlet'))

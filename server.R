@@ -20,7 +20,7 @@ function(input, output, session) {
   updateData()
   
   # Reactive expression for filtering
-  filteredData <- reactive({
+  filteredData <- shiny::reactive({
     data <- reactiveGenerationBySource()
     
     if (input$typeInput != "All") {
@@ -29,23 +29,21 @@ function(input, output, session) {
     }
     
     result <- data %>%
-      group_by(Area_ID) %>% 
+      dplyr::group_by(Area_ID) %>% 
       dplyr::summarise(MC_sum = sum(MC), TNG_sum = sum(TNG), date = date[1]) %>% 
       dplyr::mutate(cap_prop = round(TNG_sum / MC_sum * 100), 1) %>%
-      right_join(boundaries, by = "Area_ID") %>% 
-      replace_na(list(MC_sum = 0, TNG_sum = 0, cap_prop = 0))
-    
+      dplyr::right_join(boundaries, by = "Area_ID") %>% 
+      tidyr::replace_na(list(MC_sum = 0, TNG_sum = 0, cap_prop = 0))
     result
   })
   
-  observeEvent(input$refreshBtn, {
-    shinyjs::disable("refreshBtn")
+  shiny::observeEvent(input$refreshBtn, {
     updateData()
-    shinyjs::enable("refreshBtn")})
+    })
   
   # Render the filtered map
   output$alberta_map <- leaflet::renderLeaflet({
-    output$currentDate <- renderText({
+    output$currentDate <- shiny::renderText({
       paste("Last Update: ", filteredData()$date[1])
     })
     
@@ -63,7 +61,7 @@ function(input, output, session) {
     pal <- leaflet::colorBin(c("YlOrRd"), domain = var_x, bins = dynamic_bins)
     
     labss <- lapply(1:nrow(boundaries), function(i) {
-      HTML(paste("Area: ", boundaries$NAME[i], "<br>",
+      shiny::HTML(paste("Area: ", boundaries$NAME[i], "<br>",
                  "Output: ", var_x[i], "MW", "<br>",
                  "Maximum Capacity: ", filteredData()$MC_sum[i], "MW", "<br>",
                  "Current Output: ", filteredData()$TNG_sum[i], "MW", "<br>",
@@ -84,7 +82,7 @@ function(input, output, session) {
                              weight = 5,
                              color = "#000",
                              bringToFront = TRUE)) %>% 
-      addLegend(pal = pal, values = var_x, title = "Output in MW")
+      leaflet::addLegend(pal = pal, values = var_x, title = "Output in MW")
   })
   
 }
