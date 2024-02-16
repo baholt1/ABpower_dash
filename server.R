@@ -3,7 +3,6 @@ library(dplyr)
 library(ggplot2)
 library(plotly)
 library(leaflet)
-library(shinyjs)
 
 # Define server logic
 function(input, output, session) {
