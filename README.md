@@ -1,5 +1,7 @@
 # ALBERTA POWER GENERATION GRID
 
+Link to the app: https://ohaley.shinyapps.io/ab_power/
+
 ### Application
 - This application webscrapes the Alberta Electric System Operator websites for live electricity output data.
   - http://ets.aeso.ca/ets_web/ip/Market/Reports/CSDReportServlet
