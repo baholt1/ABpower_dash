@@ -3,7 +3,6 @@ library(dplyr)
 library(ggplot2)
 library(plotly)
 library(leaflet)
-library(shinyjs)
 
 # Define server logic
 function(input, output, session) {
@@ -41,18 +40,20 @@ function(input, output, session) {
                     dplyr::summarise(MC_sum = sum(MC), TNG_sum = sum(TNG), date = date[1]) %>% 
                     dplyr::mutate(cap_prop = round(TNG_sum / MC_sum * 100), 1) %>%
                     dplyr::right_join(boundaries, by = "Area_ID") %>% 
-                    tidyr::replace_na(list(MC_sum = 0, TNG_sum = 0, cap_prop = 0))
+                    tidyr::replace_na(list(MC_sum = 0, TNG_sum = 0, cap_prop = 0, date = Sys.Date()))
                   result
                 })
   
   # Render the filtered map
   output$alberta_map <- leaflet::renderLeaflet({
+    # get the filtered data
+    map_data <- filteredData() %>% 
+      dplyr::arrange(desc(Area_ID))
     output$currentDate <- shiny::renderText({
-      paste("Last Update: ", filteredData()$date[1])
+      paste("Last Update: ", map_data$date[1])
     })
     # get user input for desired output
-    
-    var_x <- filteredData()[[input$colInput]]
+    var_x <- map_data[[input$colInput]]
     range_max <- max(var_x, na.rm = TRUE)
     # if range_max is zero, add a small increment to ensure uniqueness in breaks
     ifelse(range_max == 0, range_max <- 1, 0)
@@ -61,12 +62,12 @@ function(input, output, session) {
     # color palette
     pal <- leaflet::colorBin(c("YlOrRd"), domain = var_x, bins = dynamic_bins)
     
-    labss <- lapply(1:nrow(boundaries), function(i) {
-      shiny::HTML(paste("Area: ", boundaries$NAME[i], "<br>",
+    labss <- lapply(1:nrow(map_data), function(i) {
+      shiny::HTML(paste("Area: ", map_data$NAME[i], "<br>",
                  "Output: ", var_x[i], "MW", "<br>",
-                 "Maximum Capacity: ", filteredData()$MC_sum[i], "MW", "<br>",
-                 "Current Output: ", filteredData()$TNG_sum[i], "MW", "<br>",
-                 "Current Utilization Rate: ", filteredData()$cap_prop[i], "%"))
+                 "Maximum Capacity: ", map_data$MC_sum[i], "MW", "<br>",
+                 "Current Output: ", map_data$TNG_sum[i], "MW", "<br>",
+                 "Current Utilization Rate: ", map_data$cap_prop[i], "%"))
       }
     )
     
@@ -88,3 +89,4 @@ function(input, output, session) {
     }
   )
 }
+
