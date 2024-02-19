@@ -12,7 +12,8 @@ boundaries_1 <- st_read("AESO-Planning-Areas-2020-06-23/AESO_Planning_Areas.shp"
 # Make sf object
 boundaries <- sf::st_as_sf(boundaries_1, coords = c("long", "lat"), crs = "+proj=longlat +datum=NAD83 +no_defs") %>% 
   sf::st_transform( crs = "+proj=longlat +datum=WGS84") %>% 
-  mutate(Area_ID = as.numeric(Area_ID)) 
+  dplyr::mutate(Area_ID = as.numeric(Area_ID)) %>% 
+  dplyr::arrange(desc(Area_ID))
 
 
 # gen file with comprehensive area-asset mapping 
