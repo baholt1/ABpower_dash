@@ -40,7 +40,7 @@ function(input, output, session) {
                     dplyr::summarise(MC_sum = sum(MC), TNG_sum = sum(TNG), date = date[1]) %>% 
                     dplyr::mutate(cap_prop = round(TNG_sum / MC_sum * 100), 1) %>%
                     dplyr::right_join(boundaries, by = "Area_ID") %>% 
-                    tidyr::replace_na(list(MC_sum = 0, TNG_sum = 0, cap_prop = 0, date = Sys.Date()))
+                    tidyr::replace_na(list(MC_sum = 0, TNG_sum = 0, cap_prop = 0, date = data$date[1]))
                   result
                 })
   
