@@ -23,6 +23,7 @@ function(input, output, session) {
   
   # reactive expression for filtering
   filteredData <- shiny::reactive({
+                  
                   data <- reactiveGenerationBySource()
                   
                   if (input$typeInput != "All") {

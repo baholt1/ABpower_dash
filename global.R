@@ -105,15 +105,11 @@ scrapeGen <- function(aesoDashSource ){
   
   solar <- AESOsimpleTable(15, "solar")
   
-  wind <- AESOsimpleTable(16, "wind")
+  wind <- AESOsimpleTable(17, "wind")
   
   bioAndOther <- AESOsimpleTable(18, "biomass and other")
   
-  duel <- AESOsimpleTable(19, "duel fuel")
-  
-  coal <- AESOsimpleTable(20, "coal")
-  
-  generationBySource <- rbind(gas, hydro, energyStor, solar, wind, bioAndOther, duel, coal)
+  generationBySource <- rbind(gas, hydro, energyStor, solar, wind, bioAndOther)
   
   generationBySource <- generationBySource %>%
     dplyr::mutate(assetID = str_extract(ASSET, "\\([A-Z0-9]{3,4}\\)")) %>%
